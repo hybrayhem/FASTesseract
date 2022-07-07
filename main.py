@@ -5,8 +5,9 @@ import json
 import pytesseract
 from PIL import Image
 from pdf2image import convert_from_path
+from pathlib import Path
 
-CUSTOM_CONFIG = r'-l tur' # --psm 6
+CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6, 1 veya 0
 
 # TODO: check image exists, chech builtin pdf2image methods to export directly
 def export_images_from_pdf(pdf_path, pdf_name, image_directory):
@@ -38,9 +39,11 @@ def write_list(file, list):
 
 # TODO: arguments and progress bar
 def main():
-    output_directory = "out"
-    image_directory = "images"
     pdf_directory = input("Enter the source directory: ")
+    output_directory = f"{pdf_directory}-out"
+    image_directory = f"{pdf_directory}-images"
+    Path(output_directory).mkdir(parents=True, exist_ok=True)
+    Path(image_directory).mkdir(parents=True, exist_ok=True)
     
     file_names = get_file_names(pdf_directory)
 
@@ -67,7 +70,7 @@ def main():
                 print("+")
 
         except Exception as e:
-            print("An error occured on " + file_name + ", Error message = " + e)
+            print(f"An error occured on {file_name}, Error message = {e}")
 
     print("done")
 

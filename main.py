@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 import os
+import re
 import json
 import pytesseract
 from PIL import Image
 from pdf2image import convert_from_path
 
+CUSTOM_CONFIG = r'-l tur' # --psm 6
+
+# TODO: check image exists, chech builtin pdf2image methods to export directly
 def export_images_from_pdf(pdf_path, pdf_name, image_directory):
-    pages = convert_from_path(pdf_path, dpi=300)
+    pages = convert_from_path(pdf_path, dpi=300) # TODO: https://www.reddit.com/r/Python/comments/dtz4fk/comment/f6zx57w/?utm_source=share&utm_medium=web2x&context=3
     image_names = []
 
     for i, page in enumerate(pages, start=1):
@@ -21,17 +25,22 @@ def get_file_names(directory):
     file_names = []
 
     for x in os.listdir(directory):
-        if x.endswith(".pdf") or x.endswith(".PDF"):
+        if x.lower().endswith(".pdf"):
             file_names.append(x)
 
     file_names = sorted(file_names)
     return file_names
 
+def write_list(file, list):
+    for item in list:
+        file.write(item)
+        file.write('\\f\n') # page break as string
 
+# TODO: arguments and progress bar
 def main():
     output_directory = "out"
     image_directory = "images"
-    pdf_directory = "orneklem"
+    pdf_directory = input("Enter the source directory: ")
     
     file_names = get_file_names(pdf_directory)
 
@@ -45,15 +54,18 @@ def main():
                 for image_name in image_names:
                     image_path = f"{image_directory}/{image_name}"
 
-                    custom_config = r'-l tur' # --psm 6
-                    text = str(pytesseract.image_to_string(Image.open(image_path), config=custom_config))
+                    text = str(pytesseract.image_to_string(Image.open(image_path), config=CUSTOM_CONFIG))
                     # text = text.replace("-\n", "")
 
+                    text = text[:-1] # delete page break
                     text_list.append(text)
                     print('-', end='')
 
-                json.dump(fp=output_file, obj=text_list, ensure_ascii=False)
+                # TODO: json and text output option
+                # output_file.write(json.dumps(obj=text_list, ensure_ascii=False, indent=4))
+                write_list(output_file, text_list)
                 print("+")
+
         except Exception as e:
             print("An error occured on " + file_name + ", Error message = " + e)
 

@@ -7,17 +7,23 @@ from PIL import Image
 from pdf2image import convert_from_path
 from pathlib import Path
 
-CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6, 1 veya 0
+CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6 = treat image as single uniform block of text
+# https://pyimagesearch.com/2021/11/15/tesseract-page-segmentation-modes-psms-explained-how-to-improve-your-ocr-accuracy/
+USE_PDF_IMAGES_AGAIN = False # dont convert pdf to images again, if exists
 
-# TODO: check image exists, chech builtin pdf2image methods to export directly
+# TODO: chech builtin pdf2image methods to export directly
 def export_images_from_pdf(pdf_path, pdf_name, image_directory):
-    pages = convert_from_path(pdf_path, dpi=300) # TODO: https://www.reddit.com/r/Python/comments/dtz4fk/comment/f6zx57w/?utm_source=share&utm_medium=web2x&context=3
+    pages = convert_from_path(pdf_path, dpi=300) 
     image_names = []
 
     for i, page in enumerate(pages, start=1):
         image_name = f"{pdf_name}_{i:03}.jpg"
-        page.save(f"{image_directory}/{image_name}", "JPEG")
-        image_names.append(image_name)
+        image_names.append(image_name) # will be used while getting images for detection
+
+        if(USE_PDF_IMAGES_AGAIN and Path(f"{image_directory}/{image_name}").is_file()):
+            print(f"already exists, pass {image_name}")
+        else:
+            page.save(f"{image_directory}/{image_name}", "JPEG") # create new or overwrite
 
     return image_names
 
@@ -40,6 +46,7 @@ def write_list(file, list):
 # TODO: arguments and progress bar
 def main():
     pdf_directory = input("Enter the source directory: ")
+
     output_directory = f"{pdf_directory}-out"
     image_directory = f"{pdf_directory}-images"
     Path(output_directory).mkdir(parents=True, exist_ok=True)
@@ -47,7 +54,7 @@ def main():
     
     file_names = get_file_names(pdf_directory)
 
-    for file_name in file_names:
+    for file_name in file_names:  # Iterate all files from input directory
         print(file_name, end=' ')
         try:
             with open(f"{output_directory}/{file_name}.txt", "w") as output_file:
@@ -59,6 +66,10 @@ def main():
 
                     text = str(pytesseract.image_to_string(Image.open(image_path), config=CUSTOM_CONFIG))
                     # text = text.replace("-\n", "")
+
+                    # Delete Image from Storage
+                    if(not USE_PDF_IMAGES_AGAIN):
+                        os.remove(image_path)
 
                     text = text[:-1] # delete page break
                     text_list.append(text)

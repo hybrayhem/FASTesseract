@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 import os
 import re
+import sys
 import json
 import pytesseract
 from PIL import Image
 from pdf2image import convert_from_path
 from pathlib import Path
 
+
 CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6 = treat image as single uniform block of text
-# https://pyimagesearch.com/2021/11/15/tesseract-page-segmentation-modes-psms-explained-how-to-improve-your-ocr-accuracy/
 USE_PDF_IMAGES_AGAIN = False # dont convert pdf to images again, if exists
+
 
 # TODO: chech builtin pdf2image methods to export directly
 def export_images_from_pdf(pdf_path, pdf_name, image_directory):
@@ -27,6 +29,7 @@ def export_images_from_pdf(pdf_path, pdf_name, image_directory):
 
     return image_names
 
+
 # get the name of the files and their tags
 def get_file_names(directory):
     file_names = []
@@ -38,14 +41,17 @@ def get_file_names(directory):
     file_names = sorted(file_names)
     return file_names
 
+
+#  write text list to file
 def write_list(file, list):
     for item in list:
         file.write(item)
         file.write('\\f\n') # page break as string
 
-# TODO: arguments and progress bar
+
+# TODO: progress bar
 def main():
-    pdf_directory = input("Enter the source directory: ")
+    pdf_directory = sys.argv[1]
 
     output_directory = f"{pdf_directory}-out"
     image_directory = f"{pdf_directory}-images"
@@ -61,11 +67,11 @@ def main():
                 text_list = []
                 image_names = []
                 image_names = export_images_from_pdf(f"{pdf_directory}/{file_name}", file_name, image_directory)
+                
                 for image_name in image_names:
                     image_path = f"{image_directory}/{image_name}"
 
                     text = str(pytesseract.image_to_string(Image.open(image_path), config=CUSTOM_CONFIG))
-                    # text = text.replace("-\n", "")
 
                     # Delete Image from Storage
                     if(not USE_PDF_IMAGES_AGAIN):
@@ -84,6 +90,7 @@ def main():
             print(f"An error occured on {file_name}, Error message = {e}")
 
     print("done")
+
 
 if __name__ == "__main__":
     main()

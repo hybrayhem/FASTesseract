@@ -9,8 +9,11 @@ from pdf2image import convert_from_path
 from pathlib import Path
 
 
-CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6 = treat image as single uniform block of text
 USE_PDF_IMAGES_AGAIN = False # dont convert pdf to images again, if exists
+CUSTOM_CONFIG = r'-l tur --psm 6 --oem 1' #  --tessdata-dir ./tessdata_best
+# language Turkish
+# --psm 6 = assume a single uniform block of text
+# --oem 1 = LSTM based OCR engine
 
 
 # TODO: chech builtin pdf2image methods to export directly

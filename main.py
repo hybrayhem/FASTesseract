@@ -4,6 +4,7 @@ import re
 import sys
 import json
 import pytesseract
+import multiprocessing
 from PIL import Image
 from pdf2image import convert_from_path
 from pathlib import Path
@@ -11,6 +12,8 @@ from pathlib import Path
 
 CUSTOM_CONFIG = r'-l tur --psm 6' # --psm 6 = treat image as single uniform block of text
 USE_PDF_IMAGES_AGAIN = False # dont convert pdf to images again, if exists
+
+max_threads = max(1, multiprocessing.cpu_count() // 2) # set the maximum number of threads to use
 
 
 # TODO: chech builtin pdf2image methods to export directly
@@ -49,6 +52,16 @@ def write_list(file, list):
         file.write('\\f\n') # page break as string
 
 
+def process_pdf(image_path):
+    text = str(pytesseract.image_to_string(Image.open(image_path), config=CUSTOM_CONFIG))
+    # Delete Image from Storage
+    if(not USE_PDF_IMAGES_AGAIN):
+        os.remove(image_path)
+
+    text = text[:-1] # delete page break
+    return text
+
+
 # TODO: progress bar
 def main():
     pdf_directory = sys.argv[1]
@@ -68,26 +81,35 @@ def main():
                 image_names = []
                 image_names = export_images_from_pdf(f"{pdf_directory}/{file_name}", file_name, image_directory)
                 
-                for image_name in image_names:
-                    image_path = f"{image_directory}/{image_name}"
+                with multiprocessing.Pool(processes=max_threads) as pool:
+                    results = []
+                    for image_name in image_names:
+                        image_path = f"{image_directory}/{image_name}"
+                        results.append(pool.apply_async(process_pdf, (image_path,)))
 
-                    text = str(pytesseract.image_to_string(Image.open(image_path), config=CUSTOM_CONFIG))
-
-                    # Delete Image from Storage
-                    if(not USE_PDF_IMAGES_AGAIN):
-                        os.remove(image_path)
-
-                    text = text[:-1] # delete page break
-                    text_list.append(text)
-                    print('-', end='')
+                    for result in results:
+                        text_list.append(result.get())
+                        print('-', end='')
 
                 # TODO: json and text output option
                 # output_file.write(json.dumps(obj=text_list, ensure_ascii=False, indent=4))
                 write_list(output_file, text_list)
                 print("+")
 
+                # # monitor the CPU utilization and adjust the number of threads dynamically
+                # cpu_percent = psutil.cpu_percent()
+                # if cpu_percent < 80 and max_threads < multiprocessing.cpu_count():
+                #     max_threads += 1
+                # elif cpu_percent > 95 and max_threads > 1:
+                #     max_threads -= 1
+
+                # # wait for a short time to avoid overloading the system
+                # time.sleep(1)
+
         except Exception as e:
             print(f"An error occured on {file_name}, Error message = {e}")
+        
+
 
     print("done")
 
